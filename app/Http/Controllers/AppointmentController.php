@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Booking;
+use App\Models\Appointment;
 
 class AppointmentController extends Controller
 {
@@ -11,7 +13,7 @@ class AppointmentController extends Controller
         $date = $request->input('date');
     
         // Menemukan semua appointment yang tersedia berdasarkan tanggal
-        $appointments = \App\Models\Appointment::where('date', $date)
+        $appointments = Appointment::where('date', $date)
                                                ->where('is_booked', false) // hanya slot yang belum dipesan
                                                ->get();
     
@@ -27,26 +29,40 @@ class AppointmentController extends Controller
             'availableTimes' => $availableTimes, // Mengembalikan daftar waktu yang tersedia
         ]);
     }
-    
 
-public function bookAppointment(Request $request)
-{
-    $date = $request->input('date');
-    $time = $request->input('time');
+    public function bookAppointment(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required|string|max:20',
+            'date' => 'required|date',
+            'time' => 'required|string',
+            'address' => 'required|string',
+            'purposes' => 'required|array',
+        ]);
 
-    $appointment = \App\Models\Appointment::where('date', $date)
-                                           ->where('time', $time)
-                                           ->first();
+        $appointment = Appointment::where('date', $validated['date'])
+                                   ->where('time', $validated['time'])
+                                   ->first();
 
-    if ($appointment && !$appointment->is_booked) {
-        $appointment->is_booked = true;
-        $appointment->save();
+        if ($appointment && !$appointment->is_booked) {
+            $appointment->is_booked = true;
+            $appointment->save();
 
-        return response()->json(['message' => 'Appointment booked successfully!']);
+            $booking = new Booking();
+            $booking->name = $validated['name'];
+            $booking->email = $validated['email'];
+            $booking->phone = $validated['phone'];
+            $booking->date = $validated['date'];
+            $booking->time = $validated['time'];
+            $booking->address = $validated['address'];
+            $booking->purposes = json_encode($validated['purposes']);
+            $booking->save();
+
+            return response()->json(['message' => 'Appointment booked successfully!']);
+        }
+
+        return response()->json(['message' => 'Time slot is already booked or invalid'], 400);
     }
-
-    return response()->json(['message' => 'Time slot is already booked or invalid'], 400);
-}
-
-
 }

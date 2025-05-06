@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('email');
             $table->string('phone');
             $table->date('date');
-            $table->time('time');
+            $table->time('start_time'); // Menyimpan waktu mulai
+            $table->time('end_time');   // Menyimpan waktu akhir
             $table->string('address');
             $table->json('purposes'); // Menyimpan array tujuan sebagai JSON
             $table->timestamps(); // created_at dan updated_at

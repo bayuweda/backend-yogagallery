@@ -19,7 +19,7 @@ public function run()
         [
             'name' => 'Standar',
             'price' => 500000,
-            'duration' => '1 jam',
+            'duration' => 1,
             'total_photos' => 50,
             'edited_photos' => 20,
             'includes' => json_encode(['File asli dalam format digital juga disertakan.']),
@@ -28,7 +28,7 @@ public function run()
         [
             'name' => 'Premium',
             'price' => 1000000,
-            'duration' => '2 jam',
+            'duration' => 2,
             'total_photos' => 100,
             'edited_photos' => 40,
             'includes' => json_encode(['File asli dalam format digital juga disertakan.', 'Cetak 10 lembar']),
@@ -37,7 +37,7 @@ public function run()
         [
             'name' => 'Eksklusif',
             'price' => 2000000,
-            'duration' => '4 jam',
+            'duration' => 3,
             'total_photos' => 200,
             'edited_photos' => 80,
             'includes' => json_encode(['File asli dalam format digital juga disertakan.', 'Album cetak 20 halaman']),

@@ -15,7 +15,7 @@ return new class extends Migration
         $table->id();
         $table->string('name');
         $table->integer('price');
-        $table->string('duration');
+        $table->integer('duration');
         $table->integer('total_photos');
         $table->integer('edited_photos');
         $table->json('includes');

@@ -39,6 +39,7 @@ class LoginController extends Controller
             'message' => 'Login successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'role' => $user->role,
         ]);
     }
 }

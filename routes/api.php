@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminAppointmentController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
@@ -30,3 +31,12 @@ Route::delete('/packages/{id}', [PackageController::class, 'destroy']);
 Route::get('/check-availability', [AppointmentController::class, 'checkAvailability']);
 Route::post('/book-appointment', [AppointmentController::class, 'bookAppointment']);
 Route::get('/bookings', [AppointmentController::class, 'getBookings']);
+Route::get('bookings/today', [AppointmentController::class, 'getTodayBookings']);
+
+
+// admin
+Route::prefix('admin/appointments')->group(function () {
+    Route::post('/', [AdminAppointmentController::class, 'createSlot']);
+    Route::get('/', [AdminAppointmentController::class, 'getSlots']);
+    Route::delete('/{id}', [AdminAppointmentController::class, 'deleteSlot']);
+});

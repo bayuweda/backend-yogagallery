@@ -5,14 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Booking;
 use App\Models\Appointment;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\BookingNotification;
+use Carbon\Carbon; // Menambahkan import Carbon
+
 
 class AppointmentController extends Controller
 {
     public function getBookings()
     {
-        // Ambil semua data booking terbaru
         $bookings = Booking::orderBy('created_at', 'desc')->get();
-
         return response()->json($bookings);
     }
 
@@ -20,7 +22,6 @@ class AppointmentController extends Controller
     {
         $date = $request->input('date');
 
-        // Ambil semua slot appointment yang tersedia
         $appointments = Appointment::where('date', $date)
             ->where('is_booked', false)
             ->get();
@@ -29,7 +30,6 @@ class AppointmentController extends Controller
             return response()->json(['available' => false]);
         }
 
-        // Ambil waktu mulai yang tersedia
         $availableTimes = $appointments->pluck('start_time');
 
         return response()->json([
@@ -47,13 +47,12 @@ class AppointmentController extends Controller
                 'phone' => 'required|string|max:20',
                 'date' => 'required|date',
                 'time' => 'required|string',
-                'duration' => 'required|integer|min:1', // Durasi dalam jam
+                'duration' => 'required|integer|min:1',
                 'address' => 'required|string',
                 'purposes' => 'required|array',
                 'package_id' => 'required|exists:packages,id'
             ]);
 
-            // Hitung slot waktu berdasarkan durasi
             $startTime = $validated['time'];
             $duration = $validated['duration'];
             $timeslots = [];
@@ -61,21 +60,18 @@ class AppointmentController extends Controller
                 $timeslots[] = date("H:i", strtotime($startTime . ' + ' . $i . ' hour'));
             }
 
-            // Cek apakah semua slot waktu tersedia
             $appointments = Appointment::where('date', $validated['date'])
                 ->whereIn('start_time', $timeslots)
                 ->where('is_booked', false)
                 ->get();
 
             if ($appointments->count() === $duration) {
-                // Tandai semua slot waktu sebagai dipesan
                 foreach ($appointments as $appointment) {
                     $appointment->is_booked = true;
                     $appointment->save();
                 }
 
-                // Simpan booking
-                Booking::create([
+                $booking = Booking::create([
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'phone' => $validated['phone'],
@@ -85,8 +81,11 @@ class AppointmentController extends Controller
                     'address' => $validated['address'],
                     'purposes' => json_encode($validated['purposes']),
                     'package_id' => $validated['package_id'],
-
                 ]);
+
+                // ✅ Kirim notifikasi email ke admin
+                Notification::route('mail', 'bayuweda24@gmail.com') // Ganti dengan email admin kamu
+                    ->notify(new BookingNotification($booking));
 
                 return response()->json([
                     'message' => 'Appointment booked successfully!',
@@ -98,5 +97,12 @@ class AppointmentController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function getTodayBookings()
+    {
+        $today = Carbon::today()->toDateString(); // Mendapatkan tanggal hari ini
+        $bookings = Booking::whereDate('date', $today)->get();
+        return response()->json($bookings);
     }
 }

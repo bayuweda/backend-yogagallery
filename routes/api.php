@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\PackageController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,8 @@ Route::get('/check-availability', [AppointmentController::class, 'checkAvailabil
 Route::post('/book-appointment', [AppointmentController::class, 'bookAppointment']);
 Route::get('/bookings', [AppointmentController::class, 'getBookings']);
 Route::get('bookings/today', [AppointmentController::class, 'getTodayBookings']);
+Route::post('/booking/{id}/complete', [AppointmentController::class, 'markAsCompleted']);
+
 
 
 // admin
@@ -40,3 +43,8 @@ Route::prefix('admin/appointments')->group(function () {
     Route::get('/', [AdminAppointmentController::class, 'getSlots']);
     Route::delete('/{id}', [AdminAppointmentController::class, 'deleteSlot']);
 });
+
+
+// review
+Route::get('/reviews', [ReviewController::class, 'index']);
+Route::post('/reviews', [ReviewController::class, 'store']);

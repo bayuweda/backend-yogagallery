@@ -33,7 +33,7 @@ Route::get('/check-availability', [AppointmentController::class, 'checkAvailabil
 Route::post('/book-appointment', [AppointmentController::class, 'bookAppointment']);
 Route::get('/bookings', [AppointmentController::class, 'getBookings']);
 Route::get('bookings/today', [AppointmentController::class, 'getTodayBookings']);
-Route::post('/booking/{id}/complete', [AppointmentController::class, 'markAsCompleted']);
+
 
 
 
@@ -46,5 +46,6 @@ Route::prefix('admin/appointments')->group(function () {
 
 
 // review
+Route::post('/booking/{id}/complete', [AppointmentController::class, 'markAsCompleted']);
 Route::get('/reviews', [ReviewController::class, 'index']);
 Route::post('/reviews', [ReviewController::class, 'store']);

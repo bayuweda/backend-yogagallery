@@ -57,17 +57,5 @@ class AdminAppointmentController extends Controller
     }
 
 
-    public function markAsCompleted($id)
-    {
-        $booking = Booking::findOrFail($id);
-
-        // Ubah status booking
-        $booking->status = 'completed';
-        $booking->save();
-
-        return response()->json([
-            'message' => 'Booking berhasil ditandai sebagai selesai.',
-            'booking' => $booking
-        ]);
-    }
+    
 }

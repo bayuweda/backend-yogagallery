@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\BookingNotification;
 use Carbon\Carbon; // Menambahkan import Carbon
 use Twilio\Rest\Client;
+use Illuminate\Support\Str;
 
 
 class AppointmentController extends Controller
@@ -109,26 +110,19 @@ class AppointmentController extends Controller
 
     public function markAsCompleted($id)
     {
-        // Cari booking berdasarkan ID
         $booking = Booking::findOrFail($id);
-
-        // Ubah status booking menjadi 'completed'
         $booking->status = 'completed';
+
+        // Generate token unik untuk review
+        $booking->review_token = Str::random(32); // Token unik 32 karakter
         $booking->save();
 
-        // Buat link untuk review
-        $reviewUrl = url("http://localhost:3000/review?booking_id={$booking->id}");
+        $reviewUrl = url("http://localhost:3000/review?booking_id={$booking->id}&token={$booking->review_token}");
 
-        // Format nomor WhatsApp (ubah 0 ke +62 untuk kode negara Indonesia)
         $waNumber = preg_replace('/^0/', '62', $booking->phone);
-
-        // Format pesan WhatsApp
         $message = "Halo {$booking->name}, terima kasih telah menggunakan layanan dari Yoga Gallery! Silakan isi review Anda di tautan berikut:\n{$reviewUrl}";
-
-        // Generate link WhatsApp
         $waLink = "https://wa.me/{$waNumber}?text=" . urlencode($message);
 
-        // Kembalikan respons JSON dengan link WhatsApp
         return response()->json([
             'message' => 'Booking berhasil ditandai sebagai selesai dan link review dikirim.',
             'whatsapp_link' => $waLink,

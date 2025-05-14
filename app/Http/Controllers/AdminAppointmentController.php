@@ -7,6 +7,23 @@ use App\Models\Appointment;
 
 class AdminAppointmentController extends Controller
 {
+    public function approve($id)
+    {
+        $booking = Booking::find($id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        if ($booking->status === 'approved') {
+            return response()->json(['message' => 'Booking sudah disetujui'], 400);
+        }
+
+        $booking->status = 'approved';
+        $booking->save();
+
+        return response()->json(['message' => 'Booking berhasil disetujui']);
+    }
+
     public function createSlot(Request $request)
     {
         $validated = $request->validate([
@@ -33,16 +50,28 @@ class AdminAppointmentController extends Controller
 
     public function getSlots(Request $request)
     {
-        $date = $request->query('date');
-        $query = Appointment::query();
+        $start = $request->query('start');
+        $end = $request->query('end');
 
-        if ($date) {
-            $query->where('date', $date);
+
+
+        $query = Appointment::with('booking');
+
+        if ($start && $end) {
+            $query->whereBetween('date', [$start, $end]);
         }
 
         $slots = $query->orderBy('date')->orderBy('start_time')->get();
+
         return response()->json($slots);
     }
+
+
+
+
+
+
+
 
     public function deleteSlot($id)
     {
@@ -55,7 +84,4 @@ class AdminAppointmentController extends Controller
         $slot->delete();
         return response()->json(['message' => 'Slot deleted successfully']);
     }
-
-
-    
 }

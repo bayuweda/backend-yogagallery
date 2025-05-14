@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\UserController;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,10 +30,14 @@ Route::post('/packages/store', [PackageController::class, 'store']);
 Route::put('/packages/{id}', [PackageController::class, 'update']);
 Route::delete('/packages/{id}', [PackageController::class, 'destroy']);
 
+Route::get('/bookings/{id}', [AppointmentController::class, 'show']);
+
 Route::get('/check-availability', [AppointmentController::class, 'checkAvailability']);
 Route::post('/book-appointment', [AppointmentController::class, 'bookAppointment']);
 Route::get('/bookings', [AppointmentController::class, 'getBookings']);
 Route::get('bookings/today', [AppointmentController::class, 'getTodayBookings']);
+Route::post('/booking/{id}/approve', [AppointmentController::class, 'approve']);
+
 
 
 
@@ -42,7 +47,10 @@ Route::prefix('admin/appointments')->group(function () {
     Route::post('/', [AdminAppointmentController::class, 'createSlot']);
     Route::get('/', [AdminAppointmentController::class, 'getSlots']);
     Route::delete('/{id}', [AdminAppointmentController::class, 'deleteSlot']);
+    Route::post('/generate-weekly', [AppointmentController::class, 'generateWeeklyAppointments']); // ini benar
+
 });
+
 
 
 // review

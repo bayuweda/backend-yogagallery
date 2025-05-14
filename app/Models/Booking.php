@@ -10,7 +10,15 @@ class Booking extends Model
 {
     // Properti fillable
     protected $fillable = [
-        'name', 'email', 'phone', 'date', 'start_time', 'end_time', 'address', 'purposes', 'package_id',
+        'name',
+        'email',
+        'phone',
+        'date',
+        'start_time',
+        'end_time',
+        'address',
+        'purposes',
+        'package_id',
     ];
 
     // Relasi dengan Package
@@ -18,5 +26,9 @@ class Booking extends Model
     {
         return $this->belongsTo(Package::class);
     }
-}
 
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
+}

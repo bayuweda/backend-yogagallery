@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,15 +9,16 @@ class Appointment extends Model
 {
     use HasFactory;
 
-    // Kolom yang dapat diisi (fillable)
-    protected $fillable = ['date', 'time', 'is_booked'];
+    // ✅ Gunakan kolom yang benar sesuai controller
+    protected $fillable = ['date', 'start_time', 'end_time', 'is_booked', 'booking_id'];
 
-    // Casting kolom untuk memastikan tipe data yang tepat
     protected $casts = [
-        'is_booked' => 'boolean', // Menyimpan status boolean dengan benar
-        'date' => 'date', // Mengonversi tanggal ke format yang sesuai
+        'is_booked' => 'boolean',
+        'date' => 'date',
     ];
 
-    // Jika ingin menambahkan custom accessor untuk waktu atau status lainnya,
-    // Anda dapat menambahkannya di sini.
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class);
+    }
 }

@@ -14,6 +14,25 @@ use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
+
+    public function show($id)
+    {
+        $booking = Booking::with('package')->find($id);
+
+        if (!$booking) {
+            return response()->json(['message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        // Decode purposes jika bentuknya JSON string
+        if (is_string($booking->purposes)) {
+            $decoded = json_decode($booking->purposes, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $booking->purposes = $decoded;
+            }
+        }
+
+        return response()->json($booking);
+    }
     public function getBookings()
     {
         $bookings = Booking::orderBy('created_at', 'desc')->get();
@@ -68,11 +87,7 @@ class AppointmentController extends Controller
                 ->get();
 
             if ($appointments->count() === $duration) {
-                foreach ($appointments as $appointment) {
-                    $appointment->is_booked = true;
-                    $appointment->save();
-                }
-
+                // Buat booking terlebih dahulu
                 $booking = Booking::create([
                     'name' => $validated['name'],
                     'email' => $validated['email'],
@@ -84,6 +99,13 @@ class AppointmentController extends Controller
                     'purposes' => json_encode($validated['purposes']),
                     'package_id' => $validated['package_id'],
                 ]);
+
+                // Tandai setiap appointment sebagai booked dan kaitkan dengan booking_id
+                foreach ($appointments as $appointment) {
+                    $appointment->is_booked = true;
+                    $appointment->booking_id = $booking->id;
+                    $appointment->save();
+                }
 
                 // ✅ Kirim notifikasi email ke admin
                 Notification::route('mail', 'bayuweda24@gmail.com') // Ganti dengan email admin kamu
@@ -128,5 +150,69 @@ class AppointmentController extends Controller
             'whatsapp_link' => $waLink,
             'booking' => $booking
         ]);
+    }
+
+
+    public function generateWeeklyAppointments(Request $request)
+    {
+        $startDate = Carbon::parse($request->start_date ?? now()->startOfWeek());
+        $endDate = $startDate->copy()->endOfWeek();
+
+        $timeSlots = [
+            '08:00:00',
+            '09:00:00',
+            '10:00:00',
+            '11:00:00',
+            '12:00:00',
+            '13:00:00',
+            '14:00:00',
+            '15:00:00',
+            '16:00:00',
+            '17:00:00',
+            '18:00:00',
+            '19:00:00',
+            '20:00:00',
+            '21:00:00'
+        ];
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            foreach ($timeSlots as $startTime) {
+                $endTime = Carbon::createFromFormat('H:i:s', $startTime)->addHour()->format('H:i:s');
+
+                // Cek apakah slot ini sudah ada
+                $exists = Appointment::where('date', $date->toDateString())
+                    ->where('start_time', $startTime)
+                    ->exists();
+
+                if (!$exists) {
+                    Appointment::create([
+                        'date' => $date->toDateString(),
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'is_booked' => false
+                    ]);
+                }
+            }
+        }
+
+        return response()->json(['message' => 'Slot minggu ini berhasil digenerate.']);
+    }
+
+
+    public function approve($id)
+    {
+        $booking = Booking::find($id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking tidak ditemukan'], 404);
+        }
+
+        if ($booking->status === 'approved') {
+            return response()->json(['message' => 'Booking sudah disetujui'], 400);
+        }
+
+        $booking->status = 'approved';
+        $booking->save();
+
+        return response()->json(['message' => 'Booking berhasil disetujui']);
     }
 }

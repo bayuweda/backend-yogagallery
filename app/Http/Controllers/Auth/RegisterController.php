@@ -16,12 +16,13 @@ class RegisterController extends Controller
     public function __invoke(Request $request)
     {
         // Validasi data input
-       
+
 
         // Buat user baru
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'role' => $request->role,
             'password' => Hash::make($request->password),
         ]);
 

@@ -29,13 +29,14 @@ Route::get('/packages/{id}', [PackageController::class, 'show']);
 Route::post('/packages/store', [PackageController::class, 'store']);
 Route::put('/packages/{id}', [PackageController::class, 'update']);
 Route::delete('/packages/{id}', [PackageController::class, 'destroy']);
-
+Route::get('/bookings/today', [AppointmentController::class, 'getTodayBookings']);
+Route::get('/bookings/weekly', [AppointmentController::class, 'getWeeklyBookings']);
 Route::get('/bookings/{id}', [AppointmentController::class, 'show']);
 
 Route::get('/check-availability', [AppointmentController::class, 'checkAvailability']);
 Route::post('/book-appointment', [AppointmentController::class, 'bookAppointment']);
 Route::get('/bookings', [AppointmentController::class, 'getBookings']);
-Route::get('bookings/today', [AppointmentController::class, 'getTodayBookings']);
+
 Route::post('/booking/{id}/approve', [AppointmentController::class, 'approve']);
 
 

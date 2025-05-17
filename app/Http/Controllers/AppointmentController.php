@@ -10,6 +10,7 @@ use App\Notifications\BookingNotification;
 use Carbon\Carbon; // Menambahkan import Carbon
 use Twilio\Rest\Client;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 
 
 class AppointmentController extends Controller
@@ -43,21 +44,31 @@ class AppointmentController extends Controller
     {
         $date = $request->input('date');
 
-        $appointments = Appointment::where('date', $date)
-            ->where('is_booked', false)
-            ->get();
+        // Ambil semua appointment di tanggal tersebut
+        $appointments = Appointment::where('date', $date)->get();
 
-        if ($appointments->isEmpty()) {
+        // Booking yang sudah diambil orang lain (is_booked = true)
+        $bookedAppointments = $appointments->where('is_booked', true)->values();
+
+        // Slot yang tersedia (is_booked = false)
+        $availableAppointments = $appointments->where('is_booked', false)->values();
+
+        if ($availableAppointments->isEmpty()) {
             return response()->json(['available' => false]);
         }
 
-        $availableTimes = $appointments->pluck('start_time');
-
         return response()->json([
             'available' => true,
-            'availableTimes' => $availableTimes,
+            'availableTimes' => $availableAppointments->pluck('start_time'),
+            'bookedTimes' => $bookedAppointments->map(function ($item) {
+                return [
+                    'start' => $item->start_time,
+                    'duration' => $item->duration ?? 1, // Default 1 jam jika tidak ada kolom duration
+                ];
+            })->values(),
         ]);
     }
+
 
     public function bookAppointment(Request $request)
     {
@@ -130,6 +141,21 @@ class AppointmentController extends Controller
         return response()->json($bookings);
     }
 
+    public function getWeeklyBookings()
+    {
+        // Ambil hari Senin minggu ini
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY)->startOfDay();
+
+        // Ambil hari Minggu minggu ini
+        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY)->endOfDay();
+
+        // Ambil booking dalam rentang Senin - Minggu
+        $bookings = Booking::whereBetween('date', [$startOfWeek, $endOfWeek])->get();
+
+        return response()->json($bookings);
+    }
+
+
     public function markAsCompleted($id)
     {
         $booking = Booking::findOrFail($id);
@@ -155,9 +181,24 @@ class AppointmentController extends Controller
 
     public function generateWeeklyAppointments(Request $request)
     {
-        $startDate = Carbon::parse($request->start_date ?? now()->startOfWeek());
+        // Validasi
+        $validator = Validator::make($request->all(), [
+            'week' => 'nullable|in:this,next',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => 'Parameter "week" harus bernilai this atau next.'], 422);
+        }
+
+        // Tentukan minggu (this week atau next week)
+        $week = $request->input('week', 'this');
+        $startDate = $week === 'next'
+            ? Carbon::now()->addWeek()->startOfWeek()
+            : Carbon::now()->startOfWeek();
+
         $endDate = $startDate->copy()->endOfWeek();
 
+        // Waktu slot
         $timeSlots = [
             '08:00:00',
             '09:00:00',
@@ -175,27 +216,44 @@ class AppointmentController extends Controller
             '21:00:00'
         ];
 
+        // Ambil semua data yang sudah ada dalam range minggu ini
+        $existing = Appointment::whereBetween('date', [$startDate, $endDate])
+            ->get()
+            ->map(function ($item) {
+                return $item->date . '_' . $item->start_time;
+            })->toArray();
+
+        $newSlots = [];
+
+        // Generate slot baru jika belum ada
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             foreach ($timeSlots as $startTime) {
-                $endTime = Carbon::createFromFormat('H:i:s', $startTime)->addHour()->format('H:i:s');
+                $key = $date->toDateString() . '_' . $startTime;
 
-                // Cek apakah slot ini sudah ada
-                $exists = Appointment::where('date', $date->toDateString())
-                    ->where('start_time', $startTime)
-                    ->exists();
+                if (!in_array($key, $existing)) {
+                    $endTime = Carbon::createFromFormat('H:i:s', $startTime)->addHour()->format('H:i:s');
 
-                if (!$exists) {
-                    Appointment::create([
+                    $newSlots[] = [
                         'date' => $date->toDateString(),
                         'start_time' => $startTime,
                         'end_time' => $endTime,
-                        'is_booked' => false
-                    ]);
+                        'is_booked' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                 }
             }
         }
 
-        return response()->json(['message' => 'Slot minggu ini berhasil digenerate.']);
+        // Batch insert
+        if (!empty($newSlots)) {
+            Appointment::insert($newSlots);
+        }
+
+        return response()->json([
+            'message' => 'Slot minggu ' . ($week === 'next' ? 'depan' : 'ini') . ' berhasil digenerate.',
+            'total_slots_created' => count($newSlots)
+        ]);
     }
 
 

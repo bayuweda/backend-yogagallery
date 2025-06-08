@@ -11,6 +11,7 @@ use Carbon\Carbon; // Menambahkan import Carbon
 use Twilio\Rest\Client;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+ use Illuminate\Support\Facades\Log;
 
 
 class AppointmentController extends Controller
@@ -70,69 +71,148 @@ class AppointmentController extends Controller
     }
 
 
-    public function bookAppointment(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email',
-                'phone' => 'required|string|max:20',
-                'date' => 'required|date',
-                'time' => 'required|string',
-                'duration' => 'required|integer|min:1',
-                'address' => 'required|string',
-                'purposes' => 'required|array',
-                'package_id' => 'required|exists:packages,id'
+    // public function bookAppointment(Request $request)
+    // {
+    //     try {
+    //         $validated = $request->validate([
+    //             'name' => 'required|string|max:255',
+    //             'email' => 'required|email',
+    //             'phone' => 'required|string|max:20',
+    //             'date' => 'required|date',
+    //             'time' => 'required|string',
+    //             'duration' => 'required|integer|min:1',
+    //             'address' => 'required|string',
+    //             'purposes' => 'required|array',
+    //             'package_id' => 'required|exists:packages,id'
+    //         ]);
+
+    //         $startTime = $validated['time'];
+    //         $duration = $validated['duration'];
+    //         $timeslots = [];
+    //         for ($i = 0; $i < $duration; $i++) {
+    //             $timeslots[] = date("H:i", strtotime($startTime . ' + ' . $i . ' hour'));
+    //         }
+
+    //         $appointments = Appointment::where('date', $validated['date'])
+    //             ->whereIn('start_time', $timeslots)
+    //             ->where('is_booked', false)
+    //             ->get();
+
+    //         if ($appointments->count() === $duration) {
+    //             // Buat booking terlebih dahulu
+    //             $booking = Booking::create([
+    //                 'name' => $validated['name'],
+    //                 'email' => $validated['email'],
+    //                 'phone' => $validated['phone'],
+    //                 'date' => $validated['date'],
+    //                 'start_time' => $startTime,
+    //                 'end_time' => date("H:i", strtotime($startTime . ' + ' . $duration . ' hour')),
+    //                 'address' => $validated['address'],
+    //                 'purposes' => json_encode($validated['purposes']),
+    //                 'package_id' => $validated['package_id'],
+    //             ]);
+
+    //             // Tandai setiap appointment sebagai booked dan kaitkan dengan booking_id
+    //             foreach ($appointments as $appointment) {
+    //                 $appointment->is_booked = true;
+    //                 $appointment->booking_id = $booking->id;
+    //                 $appointment->save();
+    //             }
+
+    //             // ✅ Kirim notifikasi email ke admin
+    //             Notification::route('mail', 'bayuweda24@gmail.com') // Ganti dengan email admin kamu
+    //                 ->notify(new BookingNotification($booking));
+
+    //             return response()->json([
+    //                 'message' => 'Appointment booked successfully!',
+    //                 'time_range' => "$startTime - " . date("H:i", strtotime($startTime . ' + ' . $duration . ' hour'))
+    //             ]);
+    //         }
+
+    //         return response()->json(['message' => 'Time slots are already booked or invalid'], 400);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => $e->getMessage()], 500);
+    //     }
+    // }
+   
+
+public function bookAppointment(Request $request)
+{
+    try {
+        Log::debug('Booking request input', $request->all());
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'phone' => 'required|string|max:20',
+            'date' => 'required|date',
+            'time' => 'required|string',
+            'duration' => 'required|integer|min:1',
+            'address' => 'required|string',
+            'purposes' => 'required|array',
+            'package_id' => 'required|exists:packages,id'
+        ]);
+
+        Log::debug('Validated data', $validated);
+
+        $packageExists = \App\Models\Package::find($validated['package_id']);
+        Log::debug('Package found', ['package' => $packageExists]);
+
+        $startTime = $validated['time'];
+        $duration = $validated['duration'];
+        $timeslots = [];
+        for ($i = 0; $i < $duration; $i++) {
+            $timeslots[] = date("H:i", strtotime($startTime . ' + ' . $i . ' hour'));
+        }
+
+        Log::debug('Generated timeslots', $timeslots);
+
+        $appointments = Appointment::where('date', $validated['date'])
+            ->whereIn('start_time', $timeslots)
+            ->where('is_booked', false)
+            ->get();
+
+        Log::debug('Available appointments found', ['count' => $appointments->count(), 'appointments' => $appointments->toArray()]);
+
+        if ($appointments->count() === $duration) {
+            $booking = Booking::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'date' => $validated['date'],
+                'start_time' => $startTime,
+                'end_time' => date("H:i", strtotime($startTime . ' + ' . $duration . ' hour')),
+                'address' => $validated['address'],
+                'purposes' => json_encode($validated['purposes']),
+                'package_id' => $validated['package_id'],
             ]);
 
-            $startTime = $validated['time'];
-            $duration = $validated['duration'];
-            $timeslots = [];
-            for ($i = 0; $i < $duration; $i++) {
-                $timeslots[] = date("H:i", strtotime($startTime . ' + ' . $i . ' hour'));
+            foreach ($appointments as $appointment) {
+                $appointment->is_booked = true;
+                $appointment->booking_id = $booking->id;
+                $appointment->save();
             }
 
-            $appointments = Appointment::where('date', $validated['date'])
-                ->whereIn('start_time', $timeslots)
-                ->where('is_booked', false)
-                ->get();
+            Notification::route('mail', 'bayuweda24@gmail.com')
+                ->notify(new BookingNotification($booking));
 
-            if ($appointments->count() === $duration) {
-                // Buat booking terlebih dahulu
-                $booking = Booking::create([
-                    'name' => $validated['name'],
-                    'email' => $validated['email'],
-                    'phone' => $validated['phone'],
-                    'date' => $validated['date'],
-                    'start_time' => $startTime,
-                    'end_time' => date("H:i", strtotime($startTime . ' + ' . $duration . ' hour')),
-                    'address' => $validated['address'],
-                    'purposes' => json_encode($validated['purposes']),
-                    'package_id' => $validated['package_id'],
-                ]);
+            Log::debug('Booking successful', ['booking_id' => $booking->id]);
 
-                // Tandai setiap appointment sebagai booked dan kaitkan dengan booking_id
-                foreach ($appointments as $appointment) {
-                    $appointment->is_booked = true;
-                    $appointment->booking_id = $booking->id;
-                    $appointment->save();
-                }
-
-                // ✅ Kirim notifikasi email ke admin
-                Notification::route('mail', 'bayuweda24@gmail.com') // Ganti dengan email admin kamu
-                    ->notify(new BookingNotification($booking));
-
-                return response()->json([
-                    'message' => 'Appointment booked successfully!',
-                    'time_range' => "$startTime - " . date("H:i", strtotime($startTime . ' + ' . $duration . ' hour'))
-                ]);
-            }
-
-            return response()->json(['message' => 'Time slots are already booked or invalid'], 400);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Appointment booked successfully!',
+                'time_range' => "$startTime - " . date("H:i", strtotime($startTime . ' + ' . $duration . ' hour'))
+            ]);
         }
+
+        Log::debug('Booking failed - time slots are already booked or invalid', ['requested_slots' => $timeslots]);
+
+        return response()->json(['message' => 'Time slots are already booked or invalid'], 400);
+    } catch (\Exception $e) {
+        Log::error('Booking exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        return response()->json(['error' => $e->getMessage()], 500);
     }
+}
+
 
     public function getTodayBookings()
     {

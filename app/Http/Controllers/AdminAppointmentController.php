@@ -4,33 +4,42 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Appointment;
+use Carbon\Carbon;
 
 class AdminAppointmentController extends Controller
 {
 
-    public function createSlot(Request $request)
-    {
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'start_time' => 'required|date_format:H:i',
-        ]);
+public function createSlot(Request $request)
+{
+    $validated = $request->validate([
+        'date' => 'required|date',
+        'start_time' => 'required', // boleh tetap tanpa format ketat jika pakai Carbon::parse
+    ]);
 
-        $exists = Appointment::where('date', $validated['date'])
-            ->where('start_time', $validated['start_time'])
-            ->first();
-
-        if ($exists) {
-            return response()->json(['message' => 'Slot already exists'], 409);
-        }
+    try {
+        $startTime = Carbon::parse($validated['start_time']);
+        $endTime = $startTime->copy()->addHour();
 
         $slot = Appointment::create([
             'date' => $validated['date'],
-            'start_time' => $validated['start_time'],
-            'is_booked' => false,
+            'start_time' => $startTime->format('H:i:s'),
+            'end_time' => $endTime->format('H:i:s'),
+            'is_booked' => false, // kalau ada kolom ini di DB-mu
         ]);
 
-        return response()->json(['message' => 'Slot created successfully', 'slot' => $slot]);
+        return response()->json([
+            'message' => 'Slot berhasil dibuat.',
+            'slot' => $slot,
+        ], 201);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Terjadi kesalahan saat membuat slot.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
+
 
     public function getSlots(Request $request)
     {

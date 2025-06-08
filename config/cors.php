@@ -19,11 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-    'http://localhost:3000', // untuk saat development lokal
-    'https://yoga-gallery-gd7e.vercel.app/', // ganti dengan domain frontend online kamu
-],
-
+    'allowed_origins' => ['*'],
 
     'allowed_origins_patterns' => [],
 

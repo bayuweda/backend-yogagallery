@@ -12,6 +12,11 @@ use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/server-time', function () {
+    return response()->json(['server_time' => now()->toDateTimeString()]);
+});
+
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');

@@ -40,6 +40,7 @@ class LoginController extends Controller
             'access_token' => $token,
             'token_type' => 'Bearer',
             'role' => $user->role,
+            'user' => $user, // ✅ tambahkan ini
         ]);
     }
 }

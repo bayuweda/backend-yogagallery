@@ -16,6 +16,8 @@ Route::get('/server-time', function () {
     return response()->json(['server_time' => now()->toDateTimeString()]);
 });
 
+Route::put('/users/{id}', [UserController::class, 'update']);
+Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
